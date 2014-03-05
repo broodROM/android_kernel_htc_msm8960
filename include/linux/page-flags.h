@@ -119,7 +119,15 @@ enum pageflags {
 #endif
 
 	PG_readahead,		/* page in a readahead window */
+#ifdef CONFIG_KSM_CHECK_PAGE
+	PG_ksm_scan0,		/* page has been scanned by even KSM cycle */
+#endif
 	__NR_PAGEFLAGS,
+
+#ifdef CONFIG_KSM_CHECK_PAGE
+	/* page has been scanned by odd KSM cycle */
+	PG_ksm_scan1 = PG_owner_priv_1,
+#endif
 
 	/* Filesystems */
 	PG_checked = PG_owner_priv_1,
