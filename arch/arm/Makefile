@@ -58,13 +58,26 @@ comma = ,
 # macro, but instead defines a whole series of macros which makes
 # testing for a specific architecture or later rather impossible.
 
-CUSTOM_FLAG	= -fgcse-lm -fgcse-sm -fsched-spec-load -fgcse-after-reload \
-		  -fforce-addr -ffast-math  -fsingle-precision-constant \
+CUSTOM_FLAG	= -fgcse-sm -fsched-spec-load \
+		  -fforce-addr -ffast-math -fsingle-precision-constant \
 		  -mcpu=cortex-a15 -mtune=cortex-a15 -mfpu=neon-vfpv4 -ftree-vectorize  \
 		  -mvectorize-with-neon-quad -marm \
 		  -funroll-loops -mvectorize-with-neon-quad -pipe \
 		  -floop-interchange -ftree-loop-distribution -floop-strip-mine -floop-block \
-		  -munaligned-access -fpredictive-commoning
+		  -munaligned-access
+
+ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+CUSTOM_FLAG	+= -Os
+endif
+ifdef CONFIG_CC_OPTIMIZE_DEFAULT
+CUSTOM_FLAG	+= -O2
+endif
+ifdef CONFIG_CC_OPTIMIZE_ALOT
+CUSTOM_FLAG	+= -O3
+endif
+ifdef CONFIG_CC_OPTIMIZE_FAST
+CUSTOM_FLAG	+= -Ofast
+endif
 
 arch-$(CONFIG_CPU_32v7)		:=-D__LINUX_ARM_ARCH__=7 $(call cc-option, $(CUSTOM_FLAG))
 arch-$(CONFIG_CPU_32v6)		:=-D__LINUX_ARM_ARCH__=6 $(call cc-option,-march=armv6,-march=armv5t -Wa$(comma)-march=armv6)
