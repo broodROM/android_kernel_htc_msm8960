@@ -27,6 +27,7 @@
 #include <linux/workqueue.h>
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_SWEEP2WAKE
 #include <linux/cm3629.h>
+#include <linux/wakelock.h>
 #endif
 
 #define CY8C_I2C_RETRY_TIMES 	(10)
@@ -89,14 +90,15 @@ extern uint8_t touchscreen_is_on(void) {
 #define DT2W_TIMEOUT_MAX 275 
 #define DT2W_TIMEOUT_MIN 150
 
-int pocket_detect = 1; 
-int s2w_switch = 1;
-int dt2w_switch = 2;
-int s2w_h[2][3] = {{0, 0, 0}, {0, 0, 0}};
-cputime64_t s2w_t[3] = {0, 0, 0};
-cputime64_t dt2w_time[2] = {0, 0}; 
+static int pocket_detect = 1; 
+static int s2w_switch = 1;
+static int dt2w_switch = 2;
+static int s2w_h[2][3] = {{0, 0, 0}, {0, 0, 0}};
+static cputime64_t s2w_t[3] = {0, 0, 0};
+static cputime64_t dt2w_time[2] = {0, 0}; 
 static struct input_dev * sweep2wake_pwrdev;
 static DEFINE_MUTEX(pwrlock);
+static struct wake_lock l2w_wakelock;
 
 #ifdef CONFIG_CMDLINE_OPTIONS
 static int __init cy8c_read_s2w_cmdline(char *s2w)
@@ -132,6 +134,10 @@ static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
 	msleep(80);
 
 	mutex_unlock(&pwrlock);
+
+	if (wake_lock_active(&l2w_wakelock))
+		wake_unlock(&l2w_wakelock);
+	
 	return;
 }
 static DECLARE_WORK(sweep2wake_presspwr_work, sweep2wake_presspwr);
@@ -140,8 +146,15 @@ void sweep2wake_pwrtrigger(void) {
 	if (scr_suspended && pocket_detect == 1 && power_key_check_in_pocket_no_light())
 		return;
 
+	if (scr_suspended)
+		wake_lock_timeout(&l2w_wakelock, HZ / 2);
+
 	if (mutex_trylock(&pwrlock)) {
 		schedule_work(&sweep2wake_presspwr_work);
+	}
+	else {
+		if (wake_lock_active(&l2w_wakelock))
+			wake_unlock(&l2w_wakelock);
 	}
 }
 
@@ -778,6 +791,7 @@ err_fw_get_fail:
 static void report_key_func(struct cy8c_cs_data *cs, uint8_t vk)
 {
 	int ret = 0;
+
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_SWEEP2WAKE
 		int btn_state = 0, btn_id = 0;
 		cputime64_t trigger_time = 0;
@@ -1073,6 +1087,8 @@ static int cy8c_cs_probe(struct i2c_client *client,
 		hrtimer_start(&cs->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
 	}
 
+	wake_lock_init(&l2w_wakelock, WAKE_LOCK_SUSPEND, "l2w_wakelock");
+
 	return 0;
 
 err_input_register_device_failed:
@@ -1098,6 +1114,8 @@ static int cy8c_cs_remove(struct i2c_client *client)
 	unregister_early_suspend(&cs->early_suspend);
 	free_irq(client->irq, cs);
 	input_unregister_device(cs->input_dev);
+
+	wake_lock_destroy(&l2w_wakelock);
 
 	kfree(cs);
 
