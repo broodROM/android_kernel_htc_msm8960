@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -55,7 +55,7 @@ module_param_named(debug_enable, msm_rmnet_smux_debug_mask,
 #define DBG2(x...) DBG(DEBUG_MASK_LVL2, x)
 
 /* Configure device instances */
-#define RMNET_SMUX_DEVICE_COUNT (2)
+#define RMNET_SMUX_DEVICE_COUNT (1)
 
 /* allow larger frames */
 #define RMNET_DATA_LEN 2000
